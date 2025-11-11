@@ -1,0 +1,72 @@
+data_loading:
+  default_load_mode: memmap
+  max_recent_files: 10
+  memmap_threshold_mb: 1000
+display:
+  auto_scale: true
+  background_color: white
+  contrast_stretch_percent: 2.0
+  default_rgb_bands:
+  - 29
+  - 19
+  - 9
+  interpolation: nearest
+export:
+  default_directory: ''
+  default_format: csv
+  include_wavelengths: true
+  precision: 6
+performance:
+  max_worker_threads: 4
+  multithread_roi_stats: true
+  spectrum_update_throttle: 50
+recent_files:
+- /Users/kitlewers/ISOFIT-NEON-H5-CONVERSIONS/imagery/bil/2022_Engineering_2022042014_R10C_P3C1_L1_Spectrometer_RadianceH5_2022042014_NEON_D10_R10C_DP1_20220420_L001-2_radiance/2022_Engineering_2022042014_R10C_P3C1_L1_Spectrometer_RadianceH5_2022042014_NEON_D10_R10C_DP1_20220420_L001-2_radiance.rad
+- /Users/kitlewers/GLiHT_Radiance_Reflectance/imagery/Brookhaven_Jun2016_6_radiance_L1G
+- /Users/kitlewers/GLiHT_Radiance_Reflectance/imagery/Brookhaven_Jun2016_1_radiance_L1G
+roi:
+  default_roi_color: red
+  max_rois: 50
+  roi_alpha: 0.3
+  roi_line_width: 2
+shortcuts:
+  clear_all_roi: Ctrl+R
+  export_data: Ctrl+E
+  open_file: Ctrl+O
+  quit: Ctrl+Q
+  save_project: Ctrl+S
+  toggle_roi_mode: R
+  zoom_fit: Ctrl+F
+  zoom_in: Ctrl+Plus
+  zoom_out: Ctrl+Minus
+spectrum_plot:
+  auto_scale_y: true
+  grid_alpha: 0.3
+  legend_position: top-right
+  line_width: 2
+  show_crosshair: true
+  y_range:
+  - 0.0
+  - 1.0
+ui:
+  font_family:
+  - SF Pro Display
+  - SF Pro Text
+  - Monument Grotesk
+  - Instrument Sans
+  - Segoe UI
+  - Arial
+  font_size: 11
+  image_panel_ratios:
+  - 0.8
+  - 0.2
+  max_recent_files_menu: 5
+  show_overview: true
+  show_status_bar: true
+  splitter_ratios:
+  - 0.6
+  - 0.4
+  start_maximized: true
+  toolbar_icon_size: 24
+  window_height: 800
+  window_width: 1200
