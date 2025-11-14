@@ -27,6 +27,7 @@ from file_manager_widget import FileManagerWidget
 from sam_dialog import SAMDialog
 from whitened_similarity_dialog import WhitenedSimilarityDialog
 from nc_viewer import NCViewerWindow
+from indices_dialog import IndicesDialog
 
 
 class HyperspectralViewer(QtWidgets.QMainWindow):
@@ -494,11 +495,18 @@ class HyperspectralViewer(QtWidgets.QMainWindow):
         
         # Spectral Analysis menu
         analysis_menu = menubar.addMenu('&Spectral Analysis')
-        
+
+        indices_action = QtWidgets.QAction('&Spectral Indices Calculator...', self)
+        indices_action.setShortcut('Ctrl+I')
+        indices_action.triggered.connect(self._show_indices_dialog)
+        analysis_menu.addAction(indices_action)
+
+        analysis_menu.addSeparator()
+
         sam_action = QtWidgets.QAction('&Spectral Angle Mapper...', self)
         sam_action.triggered.connect(self._show_sam_dialog)
         analysis_menu.addAction(sam_action)
-        
+
         whitened_action = QtWidgets.QAction('&Whitened Similarity...', self)
         whitened_action.triggered.connect(self._show_whitened_similarity_dialog)
         analysis_menu.addAction(whitened_action)
@@ -2417,9 +2425,102 @@ class HyperspectralViewer(QtWidgets.QMainWindow):
                     self._process_whitened_similarity_results(result_data)
                     
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Whitened Similarity Dialog Error", 
+            QtWidgets.QMessageBox.critical(self, "Whitened Similarity Dialog Error",
                 f"Failed to open Whitened Similarity dialog: {str(e)}")
-                
+
+    def _show_indices_dialog(self):
+        """Show Spectral Indices Calculator dialog."""
+        try:
+            # Get active dataset
+            current_dataset = self.data_manager.get_active_dataset()
+
+            if not current_dataset or not current_dataset.is_loaded:
+                QtWidgets.QMessageBox.warning(self, "No Data",
+                    "No dataset is currently loaded. Please open a hyperspectral dataset first.")
+                return
+
+            # Create and show indices dialog
+            dialog = IndicesDialog(current_dataset, self)
+
+            # Connect signal to handle calculated indices
+            dialog.index_calculated.connect(self._on_index_calculated)
+
+            dialog.exec_()
+
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, "Indices Dialog Error",
+                f"Failed to open Indices Calculator dialog: {str(e)}")
+
+    def _on_index_calculated(self, index_name: str, index_array: np.ndarray):
+        """Handle calculated spectral index and add as new dataset."""
+        try:
+            # Create a simple dataset wrapper for the index
+            class IndexDataset:
+                def __init__(self, index_array, index_name):
+                    self.data = np.expand_dims(index_array, axis=2)  # Add band dimension
+                    self.shape = self.data.shape
+                    self.is_loaded = True
+                    self.filename = f"{index_name}_index"
+                    self.wavelengths = None
+
+                def get_band(self, band_idx):
+                    """Get a single band."""
+                    if band_idx == 0:
+                        return self.data[:, :, 0]
+                    return None
+
+                def get_pixel_spectrum(self, x, y):
+                    """Get pixel value."""
+                    if 0 <= y < self.shape[0] and 0 <= x < self.shape[1]:
+                        return np.array([self.data[y, x, 0]])
+                    return None
+
+                def get_rgb_image(self, stretch_percent=2.0):
+                    """Get RGB visualization of index."""
+                    band = self.data[:, :, 0]
+
+                    # Normalize to 0-255
+                    valid_mask = np.isfinite(band)
+                    if not np.any(valid_mask):
+                        return np.zeros((*band.shape, 3), dtype=np.uint8)
+
+                    vmin, vmax = np.percentile(band[valid_mask], [stretch_percent, 100-stretch_percent])
+                    if vmax == vmin:
+                        vmax = vmin + 1
+
+                    normalized = np.clip((band - vmin) / (vmax - vmin) * 255, 0, 255).astype(np.uint8)
+
+                    # Create grayscale RGB
+                    rgb = np.stack([normalized, normalized, normalized], axis=-1)
+                    return rgb
+
+            # Create dataset
+            index_dataset = IndexDataset(index_array, index_name)
+            dataset_name = f"{index_name}_Index"
+
+            # Add to data manager
+            source_info = {
+                'type': 'Spectral Index',
+                'index_name': index_name,
+                'creation_time': QtCore.QDateTime.currentDateTime().toString()
+            }
+            self.data_manager.add_dataset(dataset_name, index_dataset, source_info)
+
+            # Update file manager
+            if hasattr(self, 'file_manager') and self.file_manager:
+                self.file_manager.refresh_datasets()
+
+            # Add to image view
+            if hasattr(self, 'image_view') and self.image_view:
+                self.image_view.add_dataset_tab(dataset_name)
+
+            # Show success message
+            self.status_bar.showMessage(f"✓ {index_name} index calculated successfully!")
+
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, "Index Processing Error",
+                f"Failed to process calculated index:\n{str(e)}")
+
     def _process_sam_results(self, result_data):
         """Process and integrate SAM analysis results."""
         try:
