@@ -2462,8 +2462,11 @@ class HyperspectralViewer(QtWidgets.QMainWindow):
                     self.is_loaded = True
                     self.filename = f"{index_name}_index"
                     self.wavelengths = None
+                    self.data_type = 'float32'
+                    self.interleave = 'bsq'
+                    self.header = {}
 
-                def get_band(self, band_idx):
+                def get_band_data(self, band_idx):
                     """Get a single band."""
                     if band_idx == 0:
                         return self.data[:, :, 0]
@@ -2479,20 +2482,51 @@ class HyperspectralViewer(QtWidgets.QMainWindow):
                     """Get RGB visualization of index."""
                     band = self.data[:, :, 0]
 
-                    # Normalize to 0-255
+                    # Filter out invalid values (NaN, inf, etc)
                     valid_mask = np.isfinite(band)
+
                     if not np.any(valid_mask):
                         return np.zeros((*band.shape, 3), dtype=np.uint8)
 
-                    vmin, vmax = np.percentile(band[valid_mask], [stretch_percent, 100-stretch_percent])
-                    if vmax == vmin:
-                        vmax = vmin + 1
+                    # Use min/max of valid data for better contrast
+                    valid_data = band[valid_mask]
+                    vmin = np.percentile(valid_data, stretch_percent)
+                    vmax = np.percentile(valid_data, 100 - stretch_percent)
 
-                    normalized = np.clip((band - vmin) / (vmax - vmin) * 255, 0, 255).astype(np.uint8)
+                    # Ensure we have a valid range
+                    if vmax <= vmin:
+                        vmin = valid_data.min()
+                        vmax = valid_data.max()
+                        if vmax <= vmin:
+                            vmax = vmin + 1
+
+                    # Normalize to 0-255
+                    normalized = np.zeros_like(band, dtype=np.uint8)
+                    normalized[valid_mask] = np.clip(
+                        (band[valid_mask] - vmin) / (vmax - vmin) * 255,
+                        0,
+                        255
+                    ).astype(np.uint8)
 
                     # Create grayscale RGB
                     rgb = np.stack([normalized, normalized, normalized], axis=-1)
                     return rgb
+
+                def get_rgb_composite(self, red_band=0, green_band=0, blue_band=0, stretch_percent=2.0, no_data_value=None):
+                    """Get RGB composite - for single band index, return grayscale."""
+                    return self.get_rgb_image(stretch_percent)
+
+                def get_bad_band_list(self):
+                    """Return None - indices don't have bad bands."""
+                    return None
+
+                def get_good_bands(self):
+                    """Return all bands (just band 0)."""
+                    return np.array([0])
+
+                def get_bad_bands(self):
+                    """Return empty array - no bad bands."""
+                    return np.array([])
 
             # Create dataset
             index_dataset = IndexDataset(index_array, index_name)

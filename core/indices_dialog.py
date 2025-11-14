@@ -7,7 +7,12 @@ Provides a UI for users to select and calculate spectral indices from hyperspect
 import numpy as np
 from PyQt5 import QtWidgets, QtCore, QtGui
 import sys
-sys.path.insert(0, '../indices_code/hv_vision_utilities')
+import os
+
+# Add indices_code path to system path
+indices_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'indices_code', 'hv_vision_utilities')
+sys.path.insert(0, indices_path)
+
 from band_identification_combination import *
 
 
@@ -354,7 +359,9 @@ class IndicesDialog(QtWidgets.QDialog):
             reflectance_cube = np.zeros((shape[2], shape[0], shape[1]), dtype=np.float32)
 
             for band in range(shape[2]):
-                reflectance_cube[band, :, :] = self.data_handler.get_band(band)
+                band_data = self.data_handler.get_band_data(band)
+                if band_data is not None:
+                    reflectance_cube[band, :, :] = band_data
 
             wavelengths = self.data_handler.wavelengths
 
